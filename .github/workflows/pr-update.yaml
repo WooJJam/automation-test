@@ -10,7 +10,7 @@ on:
         required: true
         type: string
     secrets:
-      GEMINI_API_KEY:
+      OPENAI_API_KEY:
         required: true
       PERSONAL_ACCESS_TOKEN:
         required: true
@@ -56,7 +56,7 @@ jobs:
         id: ai
         uses: ./.github/actions/generate-pr
         with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Update PR
         if: steps.check.outputs.skip == 'false'
