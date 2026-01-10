@@ -37,11 +37,21 @@ runs:
          } > /tmp/prompt.txt
 
          for i in {1..3}; do
+           echo "🔄 API 호출 시도 $i/3"
+
            PROMPT_JSON=$(jq -Rs . /tmp/prompt.txt)
-           RESPONSE=$(curl -sf -X POST \
+           RESPONSE=$(curl -s -X POST \
              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=$GEMINI_API_KEY" \
              -H "Content-Type: application/json" \
              -d "{\"contents\":[{\"parts\":[{\"text\":$PROMPT_JSON}]}],\"generationConfig\":{\"temperature\":0.7,\"maxOutputTokens\":2048}}")
+
+           # 에러 체크
+           if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
+             echo "❌ API Error:"
+             echo "$RESPONSE" | jq '.error'
+             [ $i -lt 3 ] && sleep $((i * 2))
+             continue
+           fi
 
            TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null | sed 's/```json//g;s/```//g')
            TITLE=$(echo "$TEXT" | jq -r '.title' 2>/dev/null)
@@ -57,8 +67,16 @@ runs:
              break
            fi
 
+           echo "⚠️  파싱 실패 - 재시도"
            [ $i -lt 3 ] && sleep $((i * 2))
          done
+
+         # API 호출 실패 처리
+         if [ ! -f "$GITHUB_OUTPUT" ] || ! grep -q "^title=" "$GITHUB_OUTPUT"; then
+           echo "❌ Gemini API 호출 실패"
+           echo "Response: $RESPONSE"
+           exit 1
+         fi
 
 #        # ===== 테스트 값으로 대체 =====
 #        echo "🧪 TEST MODE: Using hardcoded test values"
