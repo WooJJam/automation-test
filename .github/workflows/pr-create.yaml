@@ -22,10 +22,10 @@ jobs:
 
       - name: Collect Data
         run: |
-          git log origin/develop..HEAD --pretty=format:"- %s" > /tmp/commits.txt
-          git diff --name-status origin/develop...HEAD > /tmp/files.txt
-          git diff origin/develop...HEAD > /tmp/diff.txt
-          git diff --shortstat origin/develop...HEAD > /tmp/stats.txt
+          git log origin/main..HEAD --pretty=format:"- %s" > /tmp/commits.txt
+          git diff --name-status origin/main...HEAD > /tmp/files.txt
+          git diff origin/main...HEAD > /tmp/diff.txt
+          git diff --shortstat origin/main...HEAD > /tmp/stats.txt
 
       - name: Generate PR
         id: ai
@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           gh pr create \
-            --base develop \
+            --base main \
             --head "${{ inputs.branch_name }}" \
             --title "${{ steps.ai.outputs.title }}" \
             --body "${{ steps.ai.outputs.body }}" \

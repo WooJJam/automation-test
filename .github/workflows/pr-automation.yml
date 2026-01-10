@@ -114,7 +114,7 @@ jobs:
             echo "should_regenerate=true" >> $GITHUB_OUTPUT
             echo ""
             echo "🔄 RESULT: CREATE NEW PR"
-            echo "   Target base: develop"
+            echo "   Target base: main"
           fi
           
           echo "================================================"
