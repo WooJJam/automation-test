@@ -1,0 +1,194 @@
+name: PR Automation Orchestrator
+
+on:
+  push:
+    branches:
+      - 'feature#*'
+  workflow_dispatch:  # 수동 실행 옵션
+    inputs:
+      branch:
+        description: 'Branch name (optional, uses current branch if empty)'
+        required: false
+        type: string
+
+jobs:
+  check-pr-status:
+    name: Check PR Status
+    runs-on: ubuntu-latest
+    outputs:
+      pr_exists: ${{ steps.check.outputs.exists }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+      should_regenerate: ${{ steps.check.outputs.should_regenerate }}
+      branch_name: ${{ steps.check.outputs.branch_name }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 전체 히스토리 필요 (커밋 비교용)
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Determine Branch Name
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.branch }}" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+          
+          echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
+          echo "🌿 Working with branch: $BRANCH"
+
+      - name: Check PR Status and Cache
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          BRANCH="${{ steps.branch.outputs.branch_name }}"
+          echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
+          
+          echo "================================================"
+          echo "🔍 PR Status Check"
+          echo "================================================"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: $BRANCH"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "================================================"
+          
+          # PR 존재 여부 확인
+          if PR_NUMBER=$(gh pr view "$BRANCH" --json number -q .number 2>/dev/null); then
+            echo "✅ PR already exists: #$PR_NUMBER"
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          
+            # 현재 커밋 해시
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            echo "📍 Current commit: $CURRENT_COMMIT"
+          
+            # PR body에서 마지막 생성된 커밋 해시 추출
+            echo "🔎 Checking for cached generation..."
+            LAST_COMMIT=$(gh pr view "$PR_NUMBER" --json body -q '.body' | grep -o 'Last-Generated-From: [a-f0-9]*' | cut -d' ' -f2 || echo "")
+          
+            if [ -n "$LAST_COMMIT" ]; then
+              echo "📍 Last generated from: $LAST_COMMIT"
+            else
+              echo "ℹ️  No generation metadata found in PR body"
+            fi
+          
+            # 캐시 비교
+            if [ -n "$LAST_COMMIT" ] && [ "$CURRENT_COMMIT" = "$LAST_COMMIT" ]; then
+              echo "should_regenerate=false" >> $GITHUB_OUTPUT
+              echo ""
+              echo "⏭️  RESULT: SKIP REGENERATION"
+              echo "   Reason: Same commit as last generation"
+              echo "   To force regeneration: make a new commit or manually edit PR"
+            else
+              echo "should_regenerate=true" >> $GITHUB_OUTPUT
+              echo ""
+              echo "🔄 RESULT: REGENERATE PR"
+              if [ -z "$LAST_COMMIT" ]; then
+                echo "   Reason: No previous generation found"
+              else
+                echo "   Reason: New commits detected"
+                echo "   Old: $LAST_COMMIT"
+                echo "   New: $CURRENT_COMMIT"
+              fi
+            fi
+          else
+            echo "🆕 No PR found for branch: $BRANCH"
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "should_regenerate=true" >> $GITHUB_OUTPUT
+            echo ""
+            echo "🔄 RESULT: CREATE NEW PR"
+            echo "   Target base: develop"
+          fi
+          
+          echo "================================================"
+
+  create-pr:
+    name: Create New PR
+    needs: check-pr-status
+    if: |
+      needs.check-pr-status.outputs.pr_exists == 'false' && 
+      needs.check-pr-status.outputs.should_regenerate == 'true'
+    uses: ./.github/workflows/pr-create.yml
+    with:
+      branch_name: ${{ needs.check-pr-status.outputs.branch_name }}
+    secrets: inherit
+
+  update-pr:
+    name: Update Existing PR
+    needs: check-pr-status
+    if: |
+      needs.check-pr-status.outputs.pr_exists == 'true' && 
+      needs.check-pr-status.outputs.should_regenerate == 'true'
+    uses: ./.github/workflows/pr-update.yml
+    with:
+      pr_number: ${{ needs.check-pr-status.outputs.pr_number }}
+      branch_name: ${{ needs.check-pr-status.outputs.branch_name }}
+    secrets: inherit
+
+  skip-regeneration:
+    name: Skip - No Changes
+    needs: check-pr-status
+    if: needs.check-pr-status.outputs.should_regenerate == 'false'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip Message
+        run: |
+          echo "================================================"
+          echo "⏭️  Skipped PR Regeneration"
+          echo "================================================"
+          echo "PR #${{ needs.check-pr-status.outputs.pr_number }} already exists"
+          echo "and was generated from the current commit."
+          echo ""
+          echo "ℹ️  To force regeneration:"
+          echo "   1. Make a new commit, or"
+          echo "   2. Manually edit the PR to remove the generation metadata"
+          echo "================================================"
+          
+          # PR에 코멘트 추가 (선택사항)
+          # gh pr comment ${{ needs.check-pr-status.outputs.pr_number }} \
+          #   --body "⏭️ Skipped auto-regeneration: no new commits since last generation"
+
+  summary:
+    name: Workflow Summary
+    needs: [check-pr-status, create-pr, update-pr, skip-regeneration]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print Summary
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          echo "================================================"
+          echo "📊 PR Automation Summary"
+          echo "================================================"
+          echo "Branch: ${{ needs.check-pr-status.outputs.branch_name }}"
+          echo "PR Exists: ${{ needs.check-pr-status.outputs.pr_exists }}"
+          
+          if [ "${{ needs.check-pr-status.outputs.pr_exists }}" = "true" ]; then
+            echo "PR Number: #${{ needs.check-pr-status.outputs.pr_number }}"
+          fi
+          
+          echo "Should Regenerate: ${{ needs.check-pr-status.outputs.should_regenerate }}"
+          echo ""
+          
+          if [ "${{ needs.create-pr.result }}" = "success" ]; then
+            echo "✅ Action: New PR Created"
+          elif [ "${{ needs.update-pr.result }}" = "success" ]; then
+            echo "✅ Action: PR Updated"
+          elif [ "${{ needs.skip-regeneration.result }}" = "success" ]; then
+            echo "⏭️  Action: Skipped (No changes)"
+          else
+            echo "Status:"
+            echo "  - Create PR: ${{ needs.create-pr.result }}"
+            echo "  - Update PR: ${{ needs.update-pr.result }}"
+            echo "  - Skip: ${{ needs.skip-regeneration.result }}"
+          fi
+          
+          echo "================================================"
