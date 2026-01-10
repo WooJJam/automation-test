@@ -86,15 +86,15 @@ runs:
 #        ## ⚠️ 알려진 이슈 및 참고 사항 (Known Issues & Notes)
 #
 #        현재 AI API는 비활성화되어 테스트 값을 사용 중입니다."
-
-        # Output 설정
-        echo "title=$TITLE" >> $GITHUB_OUTPUT
-        echo "body<<EOF" >> $GITHUB_OUTPUT
-        echo "$BODY" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "---" >> $GITHUB_OUTPUT
-        echo "<!-- Auto-generated (TEST MODE) -->" >> $GITHUB_OUTPUT
-        echo "<!-- Last-Generated-From: $GITHUB_SHA -->" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-        echo "✅ Test values generated successfully"
+#
+#        # Output 설정
+#        echo "title=$TITLE" >> $GITHUB_OUTPUT
+#        echo "body<<EOF" >> $GITHUB_OUTPUT
+#        echo "$BODY" >> $GITHUB_OUTPUT
+#        echo "" >> $GITHUB_OUTPUT
+#        echo "---" >> $GITHUB_OUTPUT
+#        echo "<!-- Auto-generated (TEST MODE) -->" >> $GITHUB_OUTPUT
+#        echo "<!-- Last-Generated-From: $GITHUB_SHA -->" >> $GITHUB_OUTPUT
+#        echo "EOF" >> $GITHUB_OUTPUT
+#
+#        echo "✅ Test values generated successfully"
