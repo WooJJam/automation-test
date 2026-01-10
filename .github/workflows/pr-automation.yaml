@@ -62,38 +62,50 @@ jobs:
             echo "✅ PR already exists: #$PR_NUMBER"
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          
-            # 현재 커밋 해시
-            CURRENT_COMMIT=$(git rev-parse HEAD)
-            echo "📍 Current commit: $CURRENT_COMMIT"
-          
-            # PR body에서 마지막 생성된 커밋 해시 추출
-            echo "🔎 Checking for cached generation..."
-            LAST_COMMIT=$(gh pr view "$PR_NUMBER" --json body -q '.body' | grep -o 'Last-Generated-From: [a-f0-9]*' | cut -d' ' -f2 || echo "")
-          
-            if [ -n "$LAST_COMMIT" ]; then
-              echo "📍 Last generated from: $LAST_COMMIT"
-            else
-              echo "ℹ️  No generation metadata found in PR body"
-            fi
-          
-            # 캐시 비교
-            if [ -n "$LAST_COMMIT" ] && [ "$CURRENT_COMMIT" = "$LAST_COMMIT" ]; then
+
+            # Draft 상태 확인
+            IS_DRAFT=$(gh pr view "$PR_NUMBER" --json isDraft -q .isDraft)
+            echo "📋 PR status: $([ "$IS_DRAFT" = "true" ] && echo "Draft" || echo "Ready for review")"
+
+            if [ "$IS_DRAFT" = "false" ]; then
               echo "should_regenerate=false" >> $GITHUB_OUTPUT
               echo ""
               echo "⏭️  RESULT: SKIP REGENERATION"
-              echo "   Reason: Same commit as last generation"
-              echo "   To force regeneration: make a new commit or manually edit PR"
+              echo "   Reason: PR is ready for review (not draft)"
+              echo "   Auto-update only works for draft PRs"
             else
-              echo "should_regenerate=true" >> $GITHUB_OUTPUT
-              echo ""
-              echo "🔄 RESULT: REGENERATE PR"
-              if [ -z "$LAST_COMMIT" ]; then
-                echo "   Reason: No previous generation found"
+              # 현재 커밋 해시
+              CURRENT_COMMIT=$(git rev-parse HEAD)
+              echo "📍 Current commit: $CURRENT_COMMIT"
+
+              # PR body에서 마지막 생성된 커밋 해시 추출
+              echo "🔎 Checking for cached generation..."
+              LAST_COMMIT=$(gh pr view "$PR_NUMBER" --json body -q '.body' | grep -o 'Last-Generated-From: [a-f0-9]*' | cut -d' ' -f2 || echo "")
+
+              if [ -n "$LAST_COMMIT" ]; then
+                echo "📍 Last generated from: $LAST_COMMIT"
               else
-                echo "   Reason: New commits detected"
-                echo "   Old: $LAST_COMMIT"
-                echo "   New: $CURRENT_COMMIT"
+                echo "ℹ️  No generation metadata found in PR body"
+              fi
+
+              # 캐시 비교
+              if [ -n "$LAST_COMMIT" ] && [ "$CURRENT_COMMIT" = "$LAST_COMMIT" ]; then
+                echo "should_regenerate=false" >> $GITHUB_OUTPUT
+                echo ""
+                echo "⏭️  RESULT: SKIP REGENERATION"
+                echo "   Reason: Same commit as last generation"
+                echo "   To force regeneration: make a new commit or manually edit PR"
+              else
+                echo "should_regenerate=true" >> $GITHUB_OUTPUT
+                echo ""
+                echo "🔄 RESULT: REGENERATE PR"
+                if [ -z "$LAST_COMMIT" ]; then
+                  echo "   Reason: No previous generation found"
+                else
+                  echo "   Reason: New commits detected"
+                  echo "   Old: $LAST_COMMIT"
+                  echo "   New: $CURRENT_COMMIT"
+                fi
               fi
             fi
           else
@@ -111,9 +123,9 @@ jobs:
     name: Create New PR
     needs: check-pr-status
     if: |
-      needs.check-pr-status.outputs.pr_exists == 'false' && 
+      needs.check-pr-status.outputs.pr_exists == 'false' &&
       needs.check-pr-status.outputs.should_regenerate == 'true'
-    uses: ./.github/workflows/pr-create.yml
+    uses: ./.github/workflows/pr-create.yaml
     with:
       branch_name: ${{ needs.check-pr-status.outputs.branch_name }}
     secrets: inherit
@@ -122,9 +134,9 @@ jobs:
     name: Update Existing PR
     needs: check-pr-status
     if: |
-      needs.check-pr-status.outputs.pr_exists == 'true' && 
+      needs.check-pr-status.outputs.pr_exists == 'true' &&
       needs.check-pr-status.outputs.should_regenerate == 'true'
-    uses: ./.github/workflows/pr-update.yml
+    uses: ./.github/workflows/pr-update.yaml
     with:
       pr_number: ${{ needs.check-pr-status.outputs.pr_number }}
       branch_name: ${{ needs.check-pr-status.outputs.branch_name }}
