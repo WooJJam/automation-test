@@ -125,6 +125,9 @@ jobs:
     if: |
       needs.check-pr-status.outputs.pr_exists == 'false' &&
       needs.check-pr-status.outputs.should_regenerate == 'true'
+    permissions:
+      pull-requests: write
+      contents: read
     uses: ./.github/workflows/pr-create.yaml
     with:
       branch_name: ${{ needs.check-pr-status.outputs.branch_name }}
@@ -136,6 +139,9 @@ jobs:
     if: |
       needs.check-pr-status.outputs.pr_exists == 'true' &&
       needs.check-pr-status.outputs.should_regenerate == 'true'
+    permissions:
+      pull-requests: write
+      contents: read
     uses: ./.github/workflows/pr-update.yaml
     with:
       pr_number: ${{ needs.check-pr-status.outputs.pr_number }}
