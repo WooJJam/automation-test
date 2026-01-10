@@ -27,10 +27,24 @@ jobs:
 
       - name: Collect Data
         run: |
+          echo "📊 Collecting git data..."
+
           git log origin/main..HEAD --pretty=format:"- %s" > /tmp/commits.txt
+          echo "✅ Commits: $(wc -l < /tmp/commits.txt) commits"
+
           git diff --name-status origin/main...HEAD > /tmp/files.txt
+          echo "✅ Files: $(wc -l < /tmp/files.txt) files changed"
+
           git diff origin/main...HEAD > /tmp/diff.txt
+          DIFF_SIZE=$(wc -c < /tmp/diff.txt)
+          echo "✅ Diff: $DIFF_SIZE bytes"
+
           git diff --shortstat origin/main...HEAD > /tmp/stats.txt
+          echo "✅ Stats: $(cat /tmp/stats.txt)"
+
+          echo ""
+          echo "📁 Changed files:"
+          cat /tmp/files.txt
 
       - name: Generate PR
         id: ai
