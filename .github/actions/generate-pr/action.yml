@@ -112,42 +112,22 @@ runs:
               \"max_output_tokens\": 4096
             }")"
 
-          # 응답이 JSON인지 확인 (아니면 그대로 로그 찍고 재시도)
-          if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-            echo "❌ API 응답이 JSON이 아닙니다. RAW(최대 2000자):"
-            echo "$RESPONSE" | head -c 2000
-            echo
-            [ $i -lt 3 ] && sleep $((i * 2))
-            continue
-          fi
-
           # API error 체크
           if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
-            echo "❌ API Error:"
-            echo "$RESPONSE" | jq '.error'
+            echo "❌ API Error: $(echo "$RESPONSE" | jq -r '.error.message // .error')"
             [ $i -lt 3 ] && sleep $((i * 2))
             continue
           fi
 
-          # Markdown 본문 추출 (타이틀/JSON 파싱 없음, 그냥 텍스트 합치기)
-          BODY="$(echo "$RESPONSE" | jq -r '
-            [
-              .output[]?
-              | select(.type=="message")
-              | .content[]?
-              | select(.type=="output_text")
-              | (.text // "")
-            ] | join("")
-          ')"
+          # Markdown 본문 추출
+          BODY="$(echo "$RESPONSE" | jq -r '[.output[]?.content[]?.text // ""] | join("")')"
 
           if [ -n "$BODY" ] && [ "$BODY" != "null" ]; then
-            echo "✅ PR Markdown 생성 완료"
+            echo "✅ PR 생성 완료"
             break
           fi
 
-          echo "⚠️  본문이 비어있음 - 응답 구조 일부 출력(최대 2000자):"
-          echo "$RESPONSE" | jq '{id, model, status, output}' | head -c 2000 || true
-
+          echo "⚠️  본문 추출 실패 - 재시도 중"
           [ $i -lt 3 ] && sleep $((i * 2))
         done
 
