@@ -141,7 +141,7 @@ runs:
                 {\"role\": \"user\", \"content\": $(echo "$PROMPT" | jq -Rs .)}
               ],
               \"response_format\": {\"type\": \"json_object\"},
-              \"temperature\": 0.7,
+              \"temperature\": 1,
               \"max_completion_tokens\": 2048
             }")
 
