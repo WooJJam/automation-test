@@ -1,38 +1,44 @@
-name: Generate PR with AI
-description: Generate PR title and body using OpenAI GPT (stable: gpt-5-mini + Responses API)
+name: "Generate PR with AI"
+description: "Generate PR title and body using OpenAI GPT (stable - gpt-5-mini + Responses API)"
 
 inputs:
   openai_api_key:
+    description: "OpenAI API key"
     required: true
   stats_file:
+    description: "Path to stats.txt"
     required: false
-    default: '/tmp/stats.txt'
+    default: "/tmp/stats.txt"
   files_file:
+    description: "Path to files.txt"
     required: false
-    default: '/tmp/files.txt'
+    default: "/tmp/files.txt"
   diff_file:
+    description: "Path to diff.txt"
     required: false
-    default: '/tmp/diff.txt'
+    default: "/tmp/diff.txt"
 
 outputs:
   title:
-    value: ${{ steps.gen.outputs.title }}
+    description: "Generated PR title"
+    value: "${{ steps.gen.outputs.title }}"
   body:
-    value: ${{ steps.gen.outputs.body }}
+    description: "Generated PR body"
+    value: "${{ steps.gen.outputs.body }}"
 
 runs:
-  using: composite
+  using: "composite"
   steps:
-    - name: Generate
-      id: gen
-      shell: bash
+    - name: "Generate"
+      id: "gen"
+      shell: "bash"
       env:
-        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        OPENAI_API_KEY: "${{ inputs.openai_api_key }}"
       run: |
         set -euo pipefail
 
         # -----------------------------
-        # 1) Build prompt (as requested)
+        # 1) Build prompt
         # -----------------------------
         cat > /tmp/prompt.txt << 'EOF'
         You are an expert software engineer writing a professional Pull Request in Korean.
@@ -124,11 +130,7 @@ runs:
               \"max_output_tokens\": 1600
             }")"
 
-          # -----------------------------
-          # 3) Robust response handling
-          # -----------------------------
-
-          # 3-1) Ensure RESPONSE is JSON (if not, jq extraction can silently fail)
+          # 3-1) Ensure RESPONSE is JSON
           if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
             echo "❌ API 응답이 JSON이 아닙니다. RAW(최대 4000자):"
             echo "$RESPONSE" | head -c 4000
@@ -146,7 +148,6 @@ runs:
           fi
 
           # 3-3) Extract model output text reliably
-          # Prefer .output_text when present; otherwise join all output_text segments
           TEXT="$(echo "$RESPONSE" | jq -r '
             (.output_text // empty) as $ot
             | if ($ot | length) > 0 then $ot
@@ -177,9 +178,8 @@ runs:
             continue
           fi
 
-          # 3-5) Extract title/body
           TITLE="$(echo "$TEXT" | jq -r '.title // empty')"
-          BODY="$(echo "$TEXT"  | jq -r '.body  // empty')"
+          BODY="$(echo "$TEXT"  | jq -r '.body // empty')"
 
           if [ -n "$TITLE" ] && [ -n "$BODY" ]; then
             echo "title=$TITLE" >> "$GITHUB_OUTPUT"
