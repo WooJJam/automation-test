@@ -86,8 +86,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr edit "${{ steps.pr.outputs.pr_number }}" \
-            --body "${{ steps.ai.outputs.body }}"
+          echo "${{ steps.ai.outputs.body }}" > /tmp/pr_body.md
+          gh pr edit "${{ steps.pr.outputs.pr_number }}" --body-file /tmp/pr_body.md
 
           echo "✅ PR #${{ steps.pr.outputs.pr_number }} body generated with AI"
           echo "💡 Remove 'ai-generated' label to prevent auto-regeneration"
