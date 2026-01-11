@@ -16,6 +16,7 @@ inputs:
 
 outputs:
   body:
+    description: "Generated PR body in markdown format"
     value: "${{ steps.gen.outputs.body }}"
 
 runs:
