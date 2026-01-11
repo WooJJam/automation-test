@@ -14,7 +14,10 @@ jobs:
   generate-pr:
     name: Generate PR with AI
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'ai-generated') || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'ai-generated') ||
+      (github.event.action == 'opened' && contains(github.event.pull_request.labels.*.name, 'ai-generated'))
     permissions:
       pull-requests: write
       contents: read
