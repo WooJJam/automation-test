@@ -78,6 +78,9 @@ jobs:
         uses: ./.github/actions/generate-pr
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          stats_file: /tmp/stats.txt
+          files_file: /tmp/files.txt
+          diff_file: /tmp/diff.txt
 
       - name: Update PR
         env:

@@ -4,6 +4,15 @@ description: Generate PR title and body using OpenAI GPT
 inputs:
   openai_api_key:
     required: true
+  stats_file:
+    required: false
+    default: '/tmp/stats.txt'
+  files_file:
+    required: false
+    default: '/tmp/files.txt'
+  diff_file:
+    required: false
+    default: '/tmp/diff.txt'
 
 outputs:
   title:
@@ -103,17 +112,17 @@ runs:
 
         --- Stats ---
         EOF
-        cat /tmp/stats.txt >> /tmp/prompt.txt
+        cat "${{ inputs.stats_file }}" >> /tmp/prompt.txt
         cat >> /tmp/prompt.txt << 'EOF'
 
         --- Files ---
         EOF
-        cat /tmp/files.txt >> /tmp/prompt.txt
+        cat "${{ inputs.files_file }}" >> /tmp/prompt.txt
         cat >> /tmp/prompt.txt << 'EOF'
 
         --- Diff ---
         EOF
-        cat /tmp/diff.txt >> /tmp/prompt.txt
+        cat "${{ inputs.diff_file }}" >> /tmp/prompt.txt
 
         PROMPT=$(cat /tmp/prompt.txt)
         PROMPT_SIZE=$(echo "$PROMPT" | wc -c)
