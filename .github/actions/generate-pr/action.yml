@@ -127,7 +127,7 @@ runs:
                 {\"role\": \"user\", \"content\": $(printf \"%s\" \"$PROMPT\" | jq -Rs .)}
               ],
               \"text\": {\"format\": {\"type\": \"json_object\"}},
-              \"max_output_tokens\": 1600
+              \"max_output_tokens\": 4096
             }")"
 
           # 3-1) Ensure RESPONSE is JSON
