@@ -42,7 +42,7 @@ runs:
         PR 본문 작성 규칙:
         반드시 아래 구조를 따르되, 변경된 파일 목록과 Diff를 모두 분석하여 작성하세요.
 
-        > 🤖 **이 PR은 OpenAI GPT-4o-mini를 사용하여 자동 생성되었습니다.**
+        > 🤖 **이 PR은 OpenAI gpt-5-mini를 사용하여 자동 생성되었습니다.**
 
         ## 📝 요약
         - 전체 변경사항의 핵심을 1-2문장으로 요약
@@ -68,7 +68,6 @@ runs:
         1. Stats로 변경 규모 파악
         2. Files로 어떤 파일들이 변경되었는지 확인 (특히 새로 추가된 파일 주목)
         3. Diff로 실제 코드 변경 내용 분석
-        4. Commits는 맥락 파악용으로만 참고
 
         --- Stats ---
         EOF
@@ -78,11 +77,6 @@ runs:
         --- Files ---
         EOF
         cat /tmp/files.txt >> /tmp/prompt.txt
-        cat >> /tmp/prompt.txt << 'EOF'
-
-        --- Commits ---
-        EOF
-        cat /tmp/commits.txt >> /tmp/prompt.txt
         cat >> /tmp/prompt.txt << 'EOF'
 
         --- Diff ---
@@ -100,7 +94,7 @@ runs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d "{
-              \"model\": \"gpt-4o-mini\",
+              \"model\": \"gpt-5-mini\",
               \"messages\": [
                 {\"role\": \"system\", \"content\": \"You are a helpful assistant that generates PR titles and bodies in JSON format.\"},
                 {\"role\": \"user\", \"content\": $(echo "$PROMPT" | jq -Rs .)}
